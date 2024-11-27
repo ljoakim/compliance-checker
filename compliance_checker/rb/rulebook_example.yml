@@ -1,0 +1,102 @@
+---
+version: "1" # Version of rulebook (this document)
+
+specification:
+  url: "https://my_specification_location"
+  name: "Format specification for [DATA PROJECT]"
+  version: "1.0" # Version of referenced specification
+
+lookup_table:
+  named_axes: ["T", "Y", "X"]
+  filename_drs_elements: "<variable_id>_<domain_id>_<driving_source_id>_<driving_experiment_id>_<driving_variant_label>_<institution_id>_<source_id>_<version_realization>_<frequency>[_<time_range>].nc"
+
+rule_sections:
+  - section: "2.1"
+    heading: "Format"
+    rules:
+      - { data_model: "NETCDF4_CLASSIC" }
+
+  - section: "2.2"
+    heading: "Dimensions and coordinate variables"
+    rules:
+      - { dimension: [{ lookup: "T" }, { lookup: "Y" }, { lookup: "X" }] }
+      - { dimension: "bnds", size: 2 }
+
+  - section: "2.2"
+    heading: "Dimensions and coordinate variables"
+    rules:
+      - variable: { lookup: "T" }
+        rules: 
+          - { attribute: "axis", must_equal: "T" }
+          - { attribute: "units", pattern: "^days since [1-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]((T| )[0-2][0-9]:[0-5][0-9]:[0-5][0-9]Z?)?$" }
+      - variable: { lookup: "Y" }
+        rules:
+          - { attribute: "axis", must_equal: "Y" }
+      - variable: { lookup: "X" }
+        rules:
+          - { attribute: "axis", must_equal: "X" }
+
+  - section: "2.3"
+    heading: "Required global attributes"
+    rules:
+      - { attribute: ["Conventions", "creation_date", "domain_id"] }
+
+  - section: "2.3"
+    heading: "Global attribute values"
+    rules:
+      - { attribute: "Conventions", allowed_values: ["CF-1.7", "CF-1.11"] }
+      - { attribute: "creation_date", pattern: "^[1-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]T[0-2][0-9]:[0-5][0-9]:[0-5][0-9]Z$" }
+      - { attribute: "domain_id", allowed_values: ["EUR-12", "SAM-50"] }
+
+  - section: "3.1"
+    heading: "Exactly one data variable"
+    rules:
+      - logic: "exactly one"
+        rules:
+          - { variable: ["pr", "prc", "tas", "tasmax", "tasmin"] }
+
+  - section: "3.2"
+    heading: "Variable data requirements"
+    rules:
+      - variable: ["prc", "tas"]
+        required: false
+        dimensions: [{ lookup: "T" }, { lookup: "Y" }, { lookup: "X" }]
+        compression_type: "zlib"
+        compression_level: 1
+        rules:
+          - { dtype: "float32", byteorder: "=" }
+          - { attribute: "grid_mapping", must_equal: "crs" }
+          - { attribute: "missing_value", must_equal: 1.0000000200408773e+20 }
+
+  - section: "3.3"
+    heading: "Variable attribute requirements"
+    rules:
+      - variable: "prc"
+        required: false
+        rules:
+          - { attribute: "standard_name", must_equal: "convective_precipitation_flux" }
+          - { attribute: "long_name", must_equal: "Convective Precipitation" }
+
+  - section: "4.1"
+    heading: "Coordinate system"
+    rules:
+      - description: "Validating requirements for Lambert Conformal Conic crs."
+        if: { variable: "crs", rules: { attribute: "grid_mapping_name", must_equal: "lambert_conformal_conic" } }
+        then:
+          - description: "There must be a coordinate variable and dimension named 'y' or 'Y'."
+            logic: "exactly one"
+            rules:
+              - { variable: "y", dimensions: ["y"] }
+              - { variable: "Y", dimensions: ["Y"] }
+          - description: "There must be a coordinate variable and dimension named 'x' or 'X'."
+            logic: "exactly one"
+            rules:
+              - { variable: "x", dimensions: ["x"] }
+              - { variable: "X", dimensions: ["X"] }
+
+  - section: "20.1"
+    heading: "Attribute values must match DRS elements"
+    rules:
+      - { attribute: "variable_id", must_equal: { lookup: "variable_id" } }
+      - { attribute: "domain_id", must_equal: { lookup: "domain_id" } }
+      - { attribute: "driving_source_id", must_equal: { lookup: "driving_source_id" } }

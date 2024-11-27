@@ -300,6 +300,11 @@ class Result:
     def __eq__(self, other):
         return self.serialize() == other.serialize()
 
+    def success(self):
+        if isinstance(self.value, tuple):
+            return self.value[0] == self.value[1]
+        return self.value
+
 
 class TestCtx:
     """
