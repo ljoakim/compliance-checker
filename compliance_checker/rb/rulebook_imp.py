@@ -14,20 +14,20 @@ from compliance_checker.rb import rulebook_model
 
 
 class RuleBook:
-    def __init__(self, rule_book: str) -> None:
-        self._rule_book = rulebook_model.RuleBookModel.model_validate(rule_book)
+    def __init__(self, rulebook: str) -> None:
+        self._rulebook = rulebook_model.RuleBookModel.model_validate(rulebook)
         self._lookup_table = {}
 
     @staticmethod
-    def from_file(rule_book_file: pathlib.Path | str) -> RuleBook:
-        with open(rule_book_file) as f:
-            rule_book_str = yaml.safe_load(f)
-            return RuleBook(rule_book_str)
+    def from_file(rulebook_file: pathlib.Path | str) -> RuleBook:
+        with open(rulebook_file) as f:
+            rulebook_str = yaml.safe_load(f)
+            return RuleBook(rulebook_str)
 
     def validate(self, ds: netCDF4.Dataset) -> list[Result]:
         self._lookup_table, result = self._rebuild_lookup_table(ds)
         results = [result]
-        for rule_section in self._rule_book.rule_sections:
+        for rule_section in self._rulebook.rule_sections:
             result = self._apply_rule_section(ds, rule_section)
             result.msgs = [self._flatten_result_tree(result)]  # Assign single hierarchical error message
             result.children = None  # Disconnect children
@@ -60,16 +60,16 @@ class RuleBook:
             "Y": cfutil.get_latitude_variables,
             "X": cfutil.get_longitude_variables,
         }
-        for axis in self._rule_book.lookup_table.named_axes:
+        for axis in self._rulebook.lookup_table.named_axes:
             try:
                 lookup_table[axis.value] = set(axis_method_mapping[axis.value](ds)).intersection(axis_variables).pop()
             except Exception:
                 ctx.add_failure(f"Failed to get name for '{axis.value}' axis.")
 
         # DRS elements
-        if self._rule_book.lookup_table.filename_drs_elements:
+        if self._rulebook.lookup_table.filename_drs_elements:
             try:
-                lookup_table.update(self._extract_drs_elements(pathlib.Path(ds.filepath()), self._rule_book.lookup_table.filename_drs_elements))
+                lookup_table.update(self._extract_drs_elements(pathlib.Path(ds.filepath()), self._rulebook.lookup_table.filename_drs_elements))
             except Exception as e:
                 ctx.add_failure(str(e))
 
